@@ -90,7 +90,7 @@ app.post('/signup', function(req, res) {
     })
     .catch(err => {
       console.log(err);
-      res.sendStatus(400);
+      res.redirect('/signup');
     });
 });
 
@@ -103,7 +103,7 @@ app.post('/login', function(req, res) {
     .then(() => req.session.regenerate(() => res.redirect('/')))
     .catch(err => {
       console.log(err);
-      res.sendStatus(400);
+      res.redirect('/login');
     });
 });
 
