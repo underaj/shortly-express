@@ -4,6 +4,7 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var morgan = require('morgan');
+var passport = require('passport');
 
 
 var db = require('./app/config');
@@ -12,6 +13,8 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+
+require('./authenticate/passport');
 
 var app = express();
 app.use(morgan('dev'));
@@ -23,13 +26,9 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({ secret: 'AJ is cool..?' }));
+app.use(passport.initialize());
+app.use(passport.session());
 app.use(express.static(__dirname + '/public'));
-
-app.use(function (req, res, next) {
-  console.log('SESSION USER: ', req.session.user);
-  next();
-});
-
 
 app.get('/', util.isAuthenticated('/login'),
 function(req, res) {
@@ -51,7 +50,6 @@ function(req, res) {
 app.post('/links', util.isAuthenticated('/login'),
 function(req, res) {
   var uri = req.body.url;
-
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
     return res.sendStatus(404);
@@ -91,10 +89,7 @@ app.get('/signup', function(req, res) {
 app.post('/signup', function(req, res) {
   Users.create(req.body)
     .then(user => {
-      req.session.regenerate(() => {
-        req.session.user = req.body.username;
-        res.redirect('/');
-      });
+      req.login(user, () => res.redirect('/'));
     })
     .catch(err => {
       console.log(err);
@@ -106,20 +101,11 @@ app.get('/login', function(req, res) {
   res.render('login');
 });
 
-app.post('/login', function(req, res) {
-  User.login(req.body.username, req.body.password)
-    .then(() => req.session.regenerate(() => {
-      req.session.user = req.body.username;
-      res.redirect('/');
-    }))
-    .catch(err => {
-      console.log(err);
-      res.redirect('/login');
-    });
-});
+app.post('/login', passport.authenticate('local', { successRedirect: '/', failureRedirect: '/login' }));
 
 app.get('/logout', function(req, res) {
-  req.session.destroy(error => res.redirect('/login'));
+  req.logout();
+  res.redirect('/login');
 });
 
 
