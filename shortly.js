@@ -1,4 +1,5 @@
 var express = require('express');
+var session = require('express-session');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
@@ -20,6 +21,7 @@ app.use(partials());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({ secret: 'AJ is cool..?' }));
 app.use(express.static(__dirname + '/public'));
 
 
@@ -75,6 +77,35 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
+
+app.post('/signup', function(req, res) {
+  console.log(req.body);
+  Users.create(req.body)
+    .then(user => {
+      req.session.regenerate(() => res.redirect('/'));
+    })
+    .catch(err => {
+      console.log(err);
+      res.sendStatus(400);
+    });
+});
+
+app.get('/login', function(req, res) {
+  res.render('login');
+});
+
+app.post('/login', function(req, res) {
+  User.login(req.body.username, req.body.password)
+    .then(() => req.session.regenerate(() => res.redirect('/')))
+    .catch(err => {
+      console.log(err);
+      res.sendStatus(400);
+    });
+});
 
 
 
