@@ -3,6 +3,7 @@ var session = require('express-session');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var morgan = require('morgan');
 
 
 var db = require('./app/config');
@@ -13,7 +14,7 @@ var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 
 var app = express();
-
+app.use(morgan('dev'));
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
@@ -24,25 +25,30 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({ secret: 'AJ is cool..?' }));
 app.use(express.static(__dirname + '/public'));
 
+app.use(function (req, res, next) {
+  console.log('SESSION USER: ', req.session.user);
+  next();
+});
 
-app.get('/', 
+
+app.get('/', util.isAuthenticated('/login'),
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create', util.isAuthenticated('/login'),
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links',
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.status(200).send(links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links', util.isAuthenticated('/login'),
 function(req, res) {
   var uri = req.body.url;
 
@@ -83,10 +89,12 @@ app.get('/signup', function(req, res) {
 });
 
 app.post('/signup', function(req, res) {
-  console.log(req.body);
   Users.create(req.body)
     .then(user => {
-      req.session.regenerate(() => res.redirect('/'));
+      req.session.regenerate(() => {
+        req.session.user = req.body.username;
+        res.redirect('/');
+      });
     })
     .catch(err => {
       console.log(err);
@@ -100,13 +108,19 @@ app.get('/login', function(req, res) {
 
 app.post('/login', function(req, res) {
   User.login(req.body.username, req.body.password)
-    .then(() => req.session.regenerate(() => res.redirect('/')))
+    .then(() => req.session.regenerate(() => {
+      req.session.user = req.body.username;
+      res.redirect('/');
+    }))
     .catch(err => {
       console.log(err);
       res.redirect('/login');
     });
 });
 
+app.get('/logout', function(req, res) {
+  req.session.destroy(error => res.redirect('/login'));
+});
 
 
 /************************************************************/
