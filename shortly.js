@@ -108,6 +108,13 @@ app.get('/logout', function(req, res) {
   res.redirect('/login');
 });
 
+app.get('/auth/google', passport.authenticate('google', { scope: ['https://www.googleapis.com/auth/plus.login'] }));
+
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login'}),
+  function(req, res) {
+    res.redirect('/');
+  });
+
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
